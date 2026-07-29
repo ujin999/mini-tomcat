@@ -367,4 +367,11 @@ public enum HttpMethod {
 ```
 1. static으로 클래스 메모리에 처음 로딩될 때 딱 한 번만 실행되는 특별한 코드 구역을 만들 수 있다. static 블록은 모든 상수가 이미 실행된 이후에 실행된다.
 2. value 값으로 enum을 얻기 위해서는 새로운 함수나 Map이 필요하다.
+
+### 6. HttpParser의 이해
+Http Parser는 InputStream을 HttpRequest로 변환하는 역할을 한다.
+즉, HTTP 문법을 읽어서 객체를 생성해내는 역할을 한다.
+여기서 객체지향 설계에서 중요한 점은 역할을 잘 분리하는 것이다.
+Http Parser의 역할은 문법이 틀렸는지 확인하고 HttpRequest를 정확히 생성해내는 것이다.
+틀린 부분이 있다면 에러를 발생시켜 Server가 어떤 에러가 발생했는지 알려주는 역할을 한다.
 </br></br></br></br></br></br></br></br></br></br></br></br></br></br></br>

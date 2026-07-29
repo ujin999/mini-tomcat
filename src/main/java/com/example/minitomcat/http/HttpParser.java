@@ -15,6 +15,7 @@ public class HttpParser {
     public HttpRequest parse(InputStream inputStream) throws HttpParseException {
         BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
 
+
         try {
             String requestLine = new String(br.readLine());
             Map<String, String> elements = new HashMap<>();
