@@ -15,7 +15,7 @@ public class HttpRequest {
 
     private final Map<String, String> headers;
 
-    private final String body;
+    private final char[] body;
 
     private HttpRequest(Builder builder) {
         this.method = builder.method;
@@ -30,7 +30,7 @@ public class HttpRequest {
         private String uri;
         private String protocolVersion;
         private Map<String, String> headers;
-        private String body;
+        private char[] body;
 
         public Builder method(HttpMethod method) {
             this.method = method;
@@ -52,7 +52,7 @@ public class HttpRequest {
             return this;
         }
 
-        public Builder body(String body) {
+        public Builder body(char[] body) {
             this.body = body;
             return this;
         }

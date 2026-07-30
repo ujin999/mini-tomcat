@@ -1,6 +1,7 @@
 package com.example.minitomcat.routing;
 
 import com.example.minitomcat.exception.RouteException;
+import com.example.minitomcat.http.HttpMethod;
 import com.example.minitomcat.http.HttpRequest;
 import com.example.minitomcat.http.HttpResponse;
 import com.example.minitomcat.servlet.HttpServlet;
@@ -13,8 +14,8 @@ import java.util.Map;
 public class Router {
     private final Map<String, HttpServlet> routingTable = new HashMap<>();
 
-    public void register(String method, String uri, HttpServlet servlet) {
-        String key = method + ":" + uri;
+    public void register(HttpMethod method, String uri, HttpServlet servlet) {
+        String key = method.getValue() + ":" + uri;
 
         if (routingTable.containsKey(key)) {
             throw new RouteException("This routing address is already registered: " + key);

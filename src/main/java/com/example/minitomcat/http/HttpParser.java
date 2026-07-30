@@ -15,17 +15,15 @@ public class HttpParser {
     public HttpRequest parse(InputStream inputStream) throws HttpParseException {
         BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
 
-
         try {
-            String requestLine = new String(br.readLine());
-            Map<String, String> elements = new HashMap<>();
-
+            String requestLine = br.readLine();
             String[] tokens = requestLine.split(" ");
 
+            String method, uri, protocolVersion;
             if (tokens.length == 3) {
-                elements.put("Method", tokens[0]);
-                elements.put("Uri", tokens[1]);
-                elements.put("ProtocolVersion", tokens[2]);
+                method = tokens[0];
+                uri = tokens[1];
+                protocolVersion = tokens[2];
             } else {
                 throw new HttpParseException(
                         "Invalid Request Line : " + requestLine
@@ -40,18 +38,17 @@ public class HttpParser {
 
             int contentLength = Integer.parseInt(headers.getOrDefault("Content-Length", "0"));
 
+            char[] body = new char[contentLength];
             if (contentLength > 0) {
-                char[] body = new char[contentLength];
                 br.read(body, 0, contentLength);
-                elements.put("Body", new String(body));
             }
 
             return new HttpRequest.Builder()
-                    .method(HttpMethod.fromString(elements.get("Method")))
-                    .uri(elements.get("Uri"))
-                    .protocolVersion(elements.get("ProtocolVersion"))
+                    .method(HttpMethod.fromString(method))
+                    .uri(uri)
+                    .protocolVersion(protocolVersion)
                     .headers(headers)
-                    .body(elements.get("Body"))
+                    .body(body)
                     .build();
         } catch (IOException e) {
             throw new HttpParseException("Failed to parse HTTP request due to I/O error", e);

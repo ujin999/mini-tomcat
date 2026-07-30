@@ -31,12 +31,12 @@ public class HttpResponse {
         sb.append(protocolVersion).append(" ").append(statusCode).append(" ").append(reasonPhrase).append("\r\n");
 
         for (Map.Entry<String, String> entry : headers.entrySet()) {
-            sb.append(entry.getKey()).append(": ").append(entry.getValue());
+            sb.append(entry.getKey()).append(": ").append(entry.getValue()).append("\r\n");
         }
-        sb.append("\r\n\r\n");
+        sb.append("\r\n");
 
         byte[] headersBytes = sb.toString().getBytes(StandardCharsets.UTF_8);
-        byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
+        byte[] bodyBytes = body == null ? new byte[0] : body.getBytes(StandardCharsets.UTF_8);
 
         byte[] responseBytes = new byte[headersBytes.length + bodyBytes.length];
         System.arraycopy(headersBytes, 0, responseBytes, 0, headersBytes.length);

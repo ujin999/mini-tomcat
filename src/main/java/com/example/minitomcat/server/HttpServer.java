@@ -1,6 +1,7 @@
 package com.example.minitomcat.server;
 
 import com.example.minitomcat.exception.HttpParseException;
+import com.example.minitomcat.http.HttpMethod;
 import com.example.minitomcat.http.HttpParser;
 import com.example.minitomcat.http.HttpRequest;
 import com.example.minitomcat.http.HttpResponse;
@@ -25,7 +26,7 @@ public class HttpServer {
         this.port = port;
         this.parser = new HttpParser();
         this.router = new Router();
-        router.register("GET", "/hello", new HelloServlet());
+        router.register(HttpMethod.GET, "/hello", new HelloServlet());
     }
 
     public void start() {
@@ -35,27 +36,30 @@ public class HttpServer {
                 try (Socket socket = serverSocket.accept();
                 InputStream in = socket.getInputStream();
                 OutputStream out = socket.getOutputStream()) {
-                    HttpRequest request = parser.parse(in);
-                    log.info("Client connected:");
+                    HttpRequest request;
+                    HttpResponse response = new HttpResponse();
 
-                    HttpResponse httpResponse = new HttpResponse();
-                    router.route(request, httpResponse);
+                    try {
+                        request = parser.parse(in);
+                        log.info("Client connected to: {}", request.getUri());
 
-                    out.write(httpResponse.toBytes());
+                        router.route(request, response);
+                    } catch (HttpParseException e) {
+                        log.error("400 Bad Request: Invalid HTTP Format", e);
+
+                        response.setStatusCode(400);
+                        response.setReasonPhrase("Bad Request");
+                        response.getHeaders().put("Content-Type", "text/plain; charset=utf-8");
+                        response.write("400 Bad Request");
+                    }
+                    out.write(response.toBytes());
                     out.flush();
                 } catch (IOException e) {
-                    log.error("Failed to connect with client", e);
+                    log.error("Failed to process client socket connection", e);
                 }
             }
         } catch (IOException e) {
-            log.error("Failed to start HTTP server on port {}", port, e);
-        } catch(HttpParseException e) {
-
-            // 400 Bad Request 응답
-            log.error("400 Bad Request: ", e);
+            log.error("Fatal: Failed to start HTTP server on port {}", port, e);
         }
-
-
     }
-
 }

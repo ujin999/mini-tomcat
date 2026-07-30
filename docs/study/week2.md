@@ -138,3 +138,94 @@ class Router {
     }
 }
 ```
+
+## *. Refactoring
+### 1. Error Handling
+```java
+public void start() {
+        try (ServerSocket serverSocket = new ServerSocket(port)){
+            log.info("HTTP Server started on port {}", port);
+            while (true) {
+                try (Socket socket = serverSocket.accept();
+                InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+                    HttpRequest request = parser.parse(in);
+                    log.info("Client connected:");
+
+                    HttpResponse httpResponse = new HttpResponse();
+                    router.route(request, httpResponse);
+
+                    out.write(httpResponse.toBytes());
+                    out.flush();
+                } catch (IOException e) {
+                    log.error("Failed to connect with client", e);
+                }
+            }
+        } catch (IOException e) {
+            log.error("Failed to start HTTP server on port {}", port, e);
+        } catch(HttpParseException e) {
+
+            // 400 Bad Request 응답
+            log.error("400 Bad Request: ", e);
+        }
+
+
+    }
+```
+
+두 가지 문제가 발생하게 된다.
+1. 위와 같이 작성을 하게 되면 400 Bad Request에 대한 응답을 하지 못하게 된다.
+2. 그리고 에러 발생 시 while(true) 문에서 튕겨 나가기 때문에 전체 서버가 다운되는 대참사가 일어난다.
+
+```java
+public void start() {
+        try (ServerSocket serverSocket = new ServerSocket(port)){
+            log.info("HTTP Server started on port {}", port);
+            while (true) {
+                try (Socket socket = serverSocket.accept();
+                InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+                    HttpRequest request;
+                    HttpResponse response = new HttpResponse();
+
+                    try {
+                        request = parser.parse(in);
+                        log.info("Client connected to: {}", request.getUri());
+
+                        router.route(request, response);
+                    } catch (HttpParseException e) {
+                        log.error("400 Bad Request: Invalid HTTP Format", e);
+
+                        response.setStatusCode(400);
+                        response.setReasonPhrase("Bad Request");
+                        response.getHeaders().put("Content-Type", "text/plain; charset=utf-8");
+                        response.write("400 Bad Request");
+                    }
+                    out.write(response.toBytes());
+                    out.flush();
+                } catch (IOException e) {
+                    log.error("Failed to process client socket connection", e);
+                }
+            }
+        } catch (IOException e) {
+            log.error("Fatal: Failed to start HTTP server on port {}", port, e);
+        }
+    }
+```
+
+### 2. 변수를 사용하여야 하는 경우
+```java
+    elements.put("Method", tokens[0]);
+    elements.put("Uri", tokens[1]);
+    elements.put("ProtocolVersion", tokens[2]);
+```
+이 코드는 사용자가 `elements.get("method")`같이 오류에서 컴파일 에러가 발생하지 않아 오류를 잡기 어렵다.
+
+컴파일 에러를 발생시키려면 다음과 같이 변수를 직접 사용하여 변수 사용자가 정확한 코드를 사용하게 하는 것이 중요하다.
+```java
+    String method, uri, protocolVersion;
+    if (tokens.length == 3) {
+        method = tokens[0];
+        uri = tokens[1];
+        protocolVersion = tokens[2];
+```
