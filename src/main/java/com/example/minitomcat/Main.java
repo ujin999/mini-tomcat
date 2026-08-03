@@ -15,7 +15,7 @@ import java.util.Map;
 @Slf4j
 public class Main {
     public static void main(String[] args) {
-        HttpServer httpServer = new HttpServer(8080);
+        HttpServer httpServer = new HttpServer(18080);
 
         httpServer.start();
 

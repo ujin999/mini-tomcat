@@ -1,5 +1,6 @@
 package com.example.minitomcat.servlet;
 
+import com.example.minitomcat.exception.ServletException;
 import com.example.minitomcat.http.HttpMethod;
 import com.example.minitomcat.http.HttpRequest;
 import com.example.minitomcat.http.HttpResponse;
@@ -12,6 +13,8 @@ public abstract class HttpServlet {
             case POST -> doPost(httpRequest, httpResponse);
         }
     }
+
+    public void init() throws ServletException {}
 
     protected void doGet(HttpRequest httpRequest, HttpResponse httpResponse) {
         httpResponse.setStatusCode(405);

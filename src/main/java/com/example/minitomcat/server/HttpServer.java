@@ -1,12 +1,11 @@
 package com.example.minitomcat.server;
 
 import com.example.minitomcat.exception.HttpParseException;
-import com.example.minitomcat.http.HttpMethod;
 import com.example.minitomcat.http.HttpParser;
 import com.example.minitomcat.http.HttpRequest;
 import com.example.minitomcat.http.HttpResponse;
 import com.example.minitomcat.routing.Router;
-import com.example.minitomcat.servlet.HelloServlet;
+import com.example.minitomcat.servlet.ServletContainer;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -18,6 +17,7 @@ import java.net.Socket;
 
 @Slf4j
 public class HttpServer {
+    private final ServletContainer servletContainer;
     private final Router router;
     private final HttpParser parser;
     private final int port;
@@ -25,8 +25,11 @@ public class HttpServer {
     public HttpServer(int port) {
         this.port = port;
         this.parser = new HttpParser();
-        this.router = new Router();
-        router.register(HttpMethod.GET, "/hello", new HelloServlet());
+        this.servletContainer = new ServletContainer();
+
+        servletContainer.initialize();
+
+        this.router = servletContainer.getRouter();
     }
 
     public void start() {
