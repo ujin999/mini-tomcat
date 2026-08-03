@@ -684,3 +684,31 @@ HttpServlet으로 저장되는게 맞다.
 
 여기서 굉장히 중요한 말이 하나 있다.
 > 상태를 가지지 않도록 설계한다면 싱글톤을 고려해라.
+
+### Scanner는 왜 String을 인자로 받을까?
+Spring은 `@ComponentScan("com.exampele")`을 인자로 받는다.
+
+왜 인자로 받을까?
+1. Java는 "**패키지**"를 기준으로 동작한다.
+2. 빌드 후 `.jar` 또는 `.war` 형태의 압축 파일로 패키징되어 실행된다.
+  - 이 상태에서는 OS 수준의 파일 경로(/usr/...)로 개별 파일에 접근할 수 없다.
+3. 자바에서 클래스를 로딩하고 찾는 주체는 OS나 파일 시스템이 아니라 ClassLoader이다.
+  - 클래스로더는 패키지 경로를 찾을 때 문자열을 기반으로 탐색한다.
+4. File을 넘기면 확장성이 떨어진다.
+5. 타입 안정성을 위해 클래스 타입을 인자로 받는 방식도 존재하여 해당 클래스가 위치한 패키지를 기준점으로 삼아 하위 패키지를 스캔한다.
+
+### ClassLoader
+자바의 클래스로더는 여러 종류가 존재한다.
+
+그 중에 우리는 개발자가 작성한 클래스를 읽는 `Application ClassLoader`를 읽을 것이다.
+
+`Application ClassLoader`는 외부 라이브러리나 현재 프로젝트에 있는 클래스들을 로드하고 읽을 수 있다.
+
+### ClassLoader 설계
+```java
+class ClassLoader {
+    public List<Class<?>> scan(String basePackage) {
+      ...
+    }
+}
+```

@@ -15,9 +15,8 @@ public class ServletContainer {
     }
 
     public void initialize() {
-        List<Class<?>> servletClasses = List.of(
-            HelloServlet.class
-        );
+        ClassScanner scanner = new ClassScanner();
+        List<Class<?>> servletClasses = scanner.scan("com.example.minitomcat.servlet");
 
         for (Class<?> clazz : servletClasses) {
             if (clazz.isAnnotationPresent(WebServlet.class)) {
