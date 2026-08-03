@@ -553,3 +553,134 @@ if (clazz.isAnnotationPresent(WebServlet.class)) {
 아직까지는 자동등록이 아니다. 자동 등록이 되려면 모든 Servlet을 검색해서 등록해줄 수 있어야 한다.
 
 ### ClassLoader
+`Class<?> clazz = UserServlet.class;` 이런 코드를 계속 추가하는 것이 아니라,
+우리는 다음과 같은 코드를 만들고 싶다.
+```java
+for (Class<?> clazz : ???) {
+    if (clazz.isAnnotationPresent(WebServlet.class)) {
+        ...
+    }
+}
+```
+
+위의 코드에서 JVM이 `target/classes`를 어떻게 읽을까?
+
+*ClassLoader*는 `.class`파일을 읽어서 `JVM`에 등록하고 `Class` 객체를 만든다.
+
+그러면 ClassLoader는 프로젝트 안의 모든 클래스를 알 수 있을까?
+
+이것은 틀린 대답니다.
+
+왜냐하면 ClassLoader는 필요한 클래스만 로딩한다.
+
+결국 `new HelloServlet()`을 한 적이 없다면 HelloServlet.class는 아직 JVM에 없을 수도 있다.
+
+### ClassLoader 만으로는 자동 완성을 할 수 없다.
+Spring은 config 파일에 있는 .class 파일을 먼저 탐색한다.
+
+그리고 다음과 같은 방식으로 Class를 획득할 수 있다.
+```java
+프로젝트 디렉토리 탐색
+
+↓
+
+.class 파일 발견
+
+↓
+
+클래스 이름 생성
+
+↓
+
+Class.forName()
+
+↓
+
+Class 객체 생성
+
+↓
+
+Annotation 검사
+```
+
+### Reflection 먼저
+처음 단계에서는 Reflection을 먼저 탐색하기 위해 ClassLoader는 나중에 구현한다.
+
+다음과 같은 클래스를 사용해 일단은 리플렉션을 활용하여 Servlet을 추가하는 코드를 만든다.
+```java
+List<Class<?>> servletClasses = List.of(
+        HelloServlet.class
+);
+```
+
+```java
+List<Class<?>> servletClasses = List.of(
+    HelloServlet.class
+);
+
+for (Class<?> clazz : servletClasses) {
+    if (clazz.isAnnotationPresent(WebServlet.class)) {
+
+        try {
+            // Read Annotation
+            WebServlet annotation = clazz.getAnnotation(WebServlet.class);
+            String uri = annotation.value();
+            HttpMethod method = annotation.method();
+
+            // Create Reflection
+            if (!HttpServlet.class.isAssignableFrom(clazz)) {
+                continue;
+            }
+
+            Object instance = clazz.getDeclaredConstructor().newInstance();
+            HttpServlet servlet = (HttpServlet) instance;
+
+            // init()
+            servlet.init();
+
+            // register()
+            register(method, uri, servlet);
+
+        } catch (Exception e) {
+            log.error("Fail to create servlet instance", e);
+            throw new RuntimeException("Fatal error: Server failure", e);
+        }
+    }
+}
+```
+일단 오토 스캔은 하지 않고 Annotation 기반으로 서블릿을 등록하는 과정이다.
+
+해당 과정 이후 다음에 오토 스캔을 도입할 예정이다.
+
+### Tomcat이 Router에 HelloServlet.class를 저장하지 않고, HelloServlet 객체를 저장하는 이유
+
+```java
+public class HelloServlet extends HttpServlet {
+
+    @Override
+    protected void doGet(...) {
+
+    }
+
+}
+```
+위와 같이 Tomcat 내부의 `Servlet`은 무상태이다. 즉, 멤버 변수가 존재하지 않는다.
+
+톰캣은 멀티스레딩 방식으로 많은 Servlet을 한번에 돌리는데 상태가 있다면 경쟁 상태가 발생하게 된다.
+> Servlet은 절대적으로 상태를 가지면 안 된다.
+ 
+Router 내부에 `Map<String, Class<?>>`가 아닌 `Map<String, HttpServlet>`를 가지는 이유는
+Class<?>로 저장되어 있다면 매번 객체를 생성해야 한다.
+
+근데 Servlet은 애플리케이션 시작 시 한 번 생성되고, 모든 요청에서 재사용되어야 하기 때문에
+HttpServlet으로 저장되는게 맞다.
+
+그 이유는
+1. 객체 생성 비용 감소(cold start, 매 요청 시 객체 생성 비용 감소)
+2. init()을 한 번만 호출하면 됨
+3. Servlet은 상태를 가지지 않는 객체로 설계되어 있기 때문
+4. 요청마다 HttpRequest, HttpResponse를 전달받으므로 내부 상태를 저장할 필요가 없음
+=> 굳이 Servlet을 매 요청마다 만들 필요가 없는 구조이다.
+
+여기서 굉장히 중요한 말이 하나 있다.
+> 상태를 가지지 않도록 설계한다면 싱글톤을 고려해라.
