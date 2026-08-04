@@ -12,6 +12,10 @@ import java.util.Map;
         method = HttpMethod.GET
 )
 public class HelloServlet extends HttpServlet {
+
+    static {
+        System.out.println("Hello");
+    }
     @Override
     public void doGet(HttpRequest httpRequest, HttpResponse httpResponse) {
         httpResponse.setStatusCode(200);
