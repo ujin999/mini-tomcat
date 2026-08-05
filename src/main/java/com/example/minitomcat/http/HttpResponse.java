@@ -1,5 +1,6 @@
 package com.example.minitomcat.http;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,6 +18,8 @@ public class HttpResponse {
 
     private String reasonPhrase;
 
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
     private final Map<String, String> headers = new HashMap<>();
 
     private String body;
@@ -25,14 +28,26 @@ public class HttpResponse {
         this.body = body;
     }
 
+    public int getContentLength() {
+        return body == null ? 0 : body.getBytes(StandardCharsets.UTF_8).length;
+    }
+
+    public void setHeader(String key, String value) {
+        headers.put(key, value);
+    }
+
+    public void setContentType(String contentType) {
+        headers.put("Content-Type", contentType);
+    }
+
     public byte[] toBytes() {
         StringBuilder sb = new StringBuilder();
 
         sb.append(protocolVersion).append(" ").append(statusCode).append(" ").append(reasonPhrase).append("\r\n");
-
         for (Map.Entry<String, String> entry : headers.entrySet()) {
             sb.append(entry.getKey()).append(": ").append(entry.getValue()).append("\r\n");
         }
+        sb.append("Content-Length: ").append(getContentLength()).append("\r\n");
         sb.append("\r\n");
 
         byte[] headersBytes = sb.toString().getBytes(StandardCharsets.UTF_8);
