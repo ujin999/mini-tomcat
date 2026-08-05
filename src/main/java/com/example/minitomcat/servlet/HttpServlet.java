@@ -1,9 +1,11 @@
 package com.example.minitomcat.servlet;
 
 import com.example.minitomcat.exception.ServletException;
+import com.example.minitomcat.exception.http.MethodNotAllowedException;
 import com.example.minitomcat.http.HttpMethod;
 import com.example.minitomcat.http.HttpRequest;
 import com.example.minitomcat.http.HttpResponse;
+import com.example.minitomcat.http.HttpStatus;
 
 public abstract class HttpServlet {
     public void service(HttpRequest httpRequest, HttpResponse httpResponse) {
@@ -17,12 +19,10 @@ public abstract class HttpServlet {
     public void init() throws ServletException {}
 
     protected void doGet(HttpRequest httpRequest, HttpResponse httpResponse) {
-        httpResponse.setStatusCode(405);
-        httpResponse.write("405 Method Not Allowed");
+        throw new MethodNotAllowedException(HttpStatus.METHOD_NOT_ALLOWED);
     }
 
     protected void doPost(HttpRequest httpRequest, HttpResponse httpResponse) {
-        httpResponse.setStatusCode(405);
-        httpResponse.write("405 Method Not Allowed");
+        throw new MethodNotAllowedException(HttpStatus.METHOD_NOT_ALLOWED);
     }
 }

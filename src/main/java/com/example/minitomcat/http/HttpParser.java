@@ -1,6 +1,7 @@
 package com.example.minitomcat.http;
 
-import com.example.minitomcat.exception.HttpParseException;
+import com.example.minitomcat.exception.http.HttpException;
+import com.example.minitomcat.exception.http.HttpParseException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
@@ -12,7 +13,7 @@ import java.util.Map;
 
 @Slf4j
 public class HttpParser {
-    public HttpRequest parse(InputStream inputStream) throws HttpParseException {
+    public HttpRequest parse(InputStream inputStream) throws HttpParseException, IOException {
         BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
 
         try {
@@ -26,6 +27,7 @@ public class HttpParser {
                 protocolVersion = tokens[2];
             } else {
                 throw new HttpParseException(
+                        HttpStatus.BAD_REQUEST,
                         "Invalid Request Line : " + requestLine
                 );
             }
@@ -51,9 +53,9 @@ public class HttpParser {
                     .body(body)
                     .build();
         } catch (IOException e) {
-            throw new HttpParseException("Failed to parse HTTP request due to I/O error", e);
+            throw new IOException("Failed to parse HTTP request due to I/O error", e);
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw new HttpParseException("Invalid HTTP method or protocol attribute", e);
+            throw new HttpParseException(HttpStatus.BAD_REQUEST, "Invalid HTTP method or protocol attribute", e);
         }
     }
 }

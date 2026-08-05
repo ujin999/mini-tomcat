@@ -1,9 +1,11 @@
 package com.example.minitomcat.routing;
 
 import com.example.minitomcat.exception.RouteException;
+import com.example.minitomcat.exception.http.RouteNotFoundException;
 import com.example.minitomcat.http.HttpMethod;
 import com.example.minitomcat.http.HttpRequest;
 import com.example.minitomcat.http.HttpResponse;
+import com.example.minitomcat.http.HttpStatus;
 import com.example.minitomcat.servlet.HttpServlet;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,9 +35,7 @@ public class Router {
         if (httpServlet != null) {
             httpServlet.service(httpRequest, httpResponse);
         } else {
-            httpResponse.setStatusCode(404);
-            httpResponse.setReasonPhrase("Not Found");
-            httpResponse.write("Page Not Found");
+            throw new RouteNotFoundException(HttpStatus.NOT_FOUND, "Page Not Found");
         }
     }
 }
