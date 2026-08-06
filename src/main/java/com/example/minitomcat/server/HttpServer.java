@@ -1,22 +1,18 @@
 package com.example.minitomcat.server;
 
-import com.example.minitomcat.exception.http.HttpException;
 import com.example.minitomcat.exception.http.HttpExceptionHandler;
-import com.example.minitomcat.exception.http.RouteNotFoundException;
+import com.example.minitomcat.exception.http.HttpThreadPoolExceptionHandler;
 import com.example.minitomcat.handler.DefaultServlet;
 import com.example.minitomcat.http.HttpParser;
-import com.example.minitomcat.http.HttpRequest;
-import com.example.minitomcat.http.HttpResponse;
 import com.example.minitomcat.routing.Router;
 import com.example.minitomcat.servlet.ServletContainer;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.io.InputStream;
 
-import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.*;
 
 @Slf4j
 public class HttpServer {
@@ -26,6 +22,7 @@ public class HttpServer {
     private final int port;
     private final HttpExceptionHandler httpExceptionHandler;
     private final DefaultServlet defaultServlet;
+    private final ExecutorService threadPool;
 
     public HttpServer(int port) {
         this.port = port;
@@ -35,34 +32,30 @@ public class HttpServer {
         this.router = servletContainer.getRouter();
         this.httpExceptionHandler = new HttpExceptionHandler();
         this.defaultServlet = new DefaultServlet();
+        this.threadPool = new ThreadPoolExecutor(
+                10, 200, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(100)
+        );
     }
 
     public void start() {
         try (ServerSocket serverSocket = new ServerSocket(port)){
             log.info("HTTP Server started on port {}", port);
             while (true) {
-                try (Socket socket = serverSocket.accept();
-                InputStream in = socket.getInputStream();
-                OutputStream out = socket.getOutputStream()) {
-                    HttpRequest request;
-                    HttpResponse response = new HttpResponse();
+                Socket clientSocket = null;
+                try {
+                    clientSocket = serverSocket.accept();
+                    log.info("New client connected: {}", clientSocket.getRemoteSocketAddress());
+
+                    threadPool.execute(new ClientHandler(clientSocket, parser, router, defaultServlet, httpExceptionHandler));
+                } catch (RejectedExecutionException e) {
+                    log.warn("Failed to accept socket because thread pool is full");
 
                     try {
-                        request = parser.parse(in);
-                        log.info("Client connected to: {}", request.getUri());
-
-                        try {
-                            router.route(request, response);
-                        } catch (RouteNotFoundException e) {
-                            defaultServlet.service(request, response);
-                        }
-                    } catch (HttpException e) {
-                        httpExceptionHandler.handle(e, response);
-                    } catch (Exception e) {
-                        httpExceptionHandler.handleUnexpected(e, response);
+                        new HttpThreadPoolExceptionHandler().handle(clientSocket);
+                        clientSocket.close();
+                    } catch (IOException ie) {
+                        log.error("Failed to process client socket connection", ie);
                     }
-                    out.write(response.toBytes());
-                    out.flush();
                 } catch (IOException e) {
                     log.error("Failed to process client socket connection", e);
                 }
