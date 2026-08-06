@@ -4,6 +4,10 @@ import com.example.minitomcat.http.HttpStatus;
 
 public class RouteNotFoundException extends HttpException {
 
+    public RouteNotFoundException(HttpStatus httpStatus) {
+        super(httpStatus);
+    }
+
     public RouteNotFoundException(HttpStatus httpStatus, String message) {
         super(httpStatus, message);
     }

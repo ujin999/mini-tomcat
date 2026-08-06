@@ -22,14 +22,18 @@ public class HttpResponse {
     @Setter(AccessLevel.NONE)
     private final Map<String, String> headers = new HashMap<>();
 
-    private String body;
+    private byte[] body;
 
     public void write(String body) {
+        this.body = body.getBytes(StandardCharsets.UTF_8);
+    }
+
+    public void write(byte[] body) {
         this.body = body;
     }
 
     public int getContentLength() {
-        return body == null ? 0 : body.getBytes(StandardCharsets.UTF_8).length;
+        return body == null ? 0 : body.length;
     }
 
     public void setHeader(String key, String value) {
@@ -51,7 +55,7 @@ public class HttpResponse {
         sb.append("\r\n");
 
         byte[] headersBytes = sb.toString().getBytes(StandardCharsets.UTF_8);
-        byte[] bodyBytes = body == null ? new byte[0] : body.getBytes(StandardCharsets.UTF_8);
+        byte[] bodyBytes = body == null ? new byte[0] : body;
 
         byte[] responseBytes = new byte[headersBytes.length + bodyBytes.length];
         System.arraycopy(headersBytes, 0, responseBytes, 0, headersBytes.length);

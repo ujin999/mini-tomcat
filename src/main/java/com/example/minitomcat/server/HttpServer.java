@@ -2,6 +2,8 @@ package com.example.minitomcat.server;
 
 import com.example.minitomcat.exception.http.HttpException;
 import com.example.minitomcat.exception.http.HttpExceptionHandler;
+import com.example.minitomcat.exception.http.RouteNotFoundException;
+import com.example.minitomcat.handler.DefaultServlet;
 import com.example.minitomcat.http.HttpParser;
 import com.example.minitomcat.http.HttpRequest;
 import com.example.minitomcat.http.HttpResponse;
@@ -23,6 +25,7 @@ public class HttpServer {
     private final HttpParser parser;
     private final int port;
     private final HttpExceptionHandler httpExceptionHandler;
+    private final DefaultServlet defaultServlet;
 
     public HttpServer(int port) {
         this.port = port;
@@ -31,6 +34,7 @@ public class HttpServer {
         servletContainer.initialize();
         this.router = servletContainer.getRouter();
         this.httpExceptionHandler = new HttpExceptionHandler();
+        this.defaultServlet = new DefaultServlet();
     }
 
     public void start() {
@@ -47,7 +51,11 @@ public class HttpServer {
                         request = parser.parse(in);
                         log.info("Client connected to: {}", request.getUri());
 
-                        router.route(request, response);
+                        try {
+                            router.route(request, response);
+                        } catch (RouteNotFoundException e) {
+                            defaultServlet.service(request, response);
+                        }
                     } catch (HttpException e) {
                         httpExceptionHandler.handle(e, response);
                     } catch (Exception e) {
