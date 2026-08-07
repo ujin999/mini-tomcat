@@ -7,6 +7,7 @@ import com.example.minitomcat.handler.DefaultServlet;
 import com.example.minitomcat.http.HttpParser;
 import com.example.minitomcat.http.HttpRequest;
 import com.example.minitomcat.http.HttpResponse;
+import com.example.minitomcat.http.HttpSessionHandler;
 import com.example.minitomcat.routing.Router;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,14 +21,17 @@ public class ClientHandler implements Runnable {
 
     private final Socket clientSocket;
     private final HttpParser parser;
+    private final HttpSessionHandler sessionHandler;
     private final Router router;
     private final DefaultServlet defaultServlet;
     private final HttpExceptionHandler httpExceptionHandler;
 
     public ClientHandler(Socket socket, HttpParser parser, Router router,
-                         DefaultServlet defaultServlet, HttpExceptionHandler httpExceptionHandler) {
+                         DefaultServlet defaultServlet, HttpExceptionHandler httpExceptionHandler,
+                         HttpSessionHandler sessionHandler) {
         this.clientSocket = socket;
         this.parser = parser;
+        this.sessionHandler = sessionHandler;
         this.router = router;
         this.defaultServlet = defaultServlet;
         this.httpExceptionHandler = httpExceptionHandler;
@@ -47,6 +51,7 @@ public class ClientHandler implements Runnable {
             try {
                 request = parser.parse(in);
                 log.info("Client connected to: {}", request.getUri());
+                sessionHandler.handle(request, response);
 
                 try {
                     router.route(request, response);

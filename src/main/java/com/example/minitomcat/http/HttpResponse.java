@@ -1,5 +1,6 @@
 package com.example.minitomcat.http;
 
+import com.example.minitomcat.http.session.HttpSession;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,6 +22,8 @@ public class HttpResponse {
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     private final Map<String, String> headers = new HashMap<>();
+
+    private Map<String, String> cookies = new HashMap<>();
 
     private byte[] body;
 
@@ -44,6 +47,10 @@ public class HttpResponse {
         headers.put("Content-Type", contentType);
     }
 
+    public void setCookie(String name, String value) {
+        cookies.put(name, value);
+    }
+
     public byte[] toBytes() {
         StringBuilder sb = new StringBuilder();
 
@@ -52,6 +59,9 @@ public class HttpResponse {
             sb.append(entry.getKey()).append(": ").append(entry.getValue()).append("\r\n");
         }
         sb.append("Content-Length: ").append(getContentLength()).append("\r\n");
+        for (Map.Entry<String, String> entry : cookies.entrySet()) {
+            sb.append("Set-Cookie: ").append(entry.getKey()).append("=").append(entry.getValue()).append("\r\n");
+        }
         sb.append("\r\n");
 
         byte[] headersBytes = sb.toString().getBytes(StandardCharsets.UTF_8);

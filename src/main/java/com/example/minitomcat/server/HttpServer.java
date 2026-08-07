@@ -4,6 +4,7 @@ import com.example.minitomcat.exception.http.HttpExceptionHandler;
 import com.example.minitomcat.exception.http.HttpThreadPoolExceptionHandler;
 import com.example.minitomcat.handler.DefaultServlet;
 import com.example.minitomcat.http.HttpParser;
+import com.example.minitomcat.http.HttpSessionHandler;
 import com.example.minitomcat.routing.Router;
 import com.example.minitomcat.servlet.ServletContainer;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class HttpServer {
     private final HttpParser parser;
     private final int port;
     private final HttpExceptionHandler httpExceptionHandler;
+    private final HttpSessionHandler httpSessionHandler;
     private final DefaultServlet defaultServlet;
     private final ExecutorService threadPool;
 
@@ -31,6 +33,7 @@ public class HttpServer {
         servletContainer.initialize();
         this.router = servletContainer.getRouter();
         this.httpExceptionHandler = new HttpExceptionHandler();
+        this.httpSessionHandler = new HttpSessionHandler();
         this.defaultServlet = new DefaultServlet();
         this.threadPool = new ThreadPoolExecutor(
                 10, 200, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(100)
@@ -46,7 +49,7 @@ public class HttpServer {
                     clientSocket = serverSocket.accept();
                     log.info("New client connected: {}", clientSocket.getRemoteSocketAddress());
 
-                    threadPool.execute(new ClientHandler(clientSocket, parser, router, defaultServlet, httpExceptionHandler));
+                    threadPool.execute(new ClientHandler(clientSocket, parser, router, defaultServlet, httpExceptionHandler, httpSessionHandler));
                 } catch (RejectedExecutionException e) {
                     log.warn("Failed to accept socket because thread pool is full");
 
