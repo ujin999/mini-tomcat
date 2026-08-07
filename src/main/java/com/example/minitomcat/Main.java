@@ -17,6 +17,7 @@ public class Main {
     public static void main(String[] args) {
         HttpServer httpServer = new HttpServer(18080);
 
+        httpServer.initialize();
         httpServer.start();
 
 

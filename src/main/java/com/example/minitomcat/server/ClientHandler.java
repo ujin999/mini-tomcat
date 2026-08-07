@@ -3,6 +3,8 @@ package com.example.minitomcat.server;
 import com.example.minitomcat.exception.http.HttpException;
 import com.example.minitomcat.exception.http.HttpExceptionHandler;
 import com.example.minitomcat.exception.http.RouteNotFoundException;
+import com.example.minitomcat.filter.Filter;
+import com.example.minitomcat.filter.FilterChain;
 import com.example.minitomcat.handler.DefaultServlet;
 import com.example.minitomcat.http.HttpParser;
 import com.example.minitomcat.http.HttpRequest;
@@ -15,25 +17,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.List;
 
 @Slf4j
 public class ClientHandler implements Runnable {
 
     private final Socket clientSocket;
     private final HttpParser parser;
-    private final HttpSessionHandler sessionHandler;
-    private final Router router;
-    private final DefaultServlet defaultServlet;
+    private final FilterChain filterChain;
     private final HttpExceptionHandler httpExceptionHandler;
 
-    public ClientHandler(Socket socket, HttpParser parser, Router router,
-                         DefaultServlet defaultServlet, HttpExceptionHandler httpExceptionHandler,
-                         HttpSessionHandler sessionHandler) {
+    public ClientHandler(Socket socket, HttpParser parser, HttpExceptionHandler httpExceptionHandler,
+                         List<Filter> filters) {
         this.clientSocket = socket;
         this.parser = parser;
-        this.sessionHandler = sessionHandler;
-        this.router = router;
-        this.defaultServlet = defaultServlet;
+        this.filterChain = new FilterChain(filters);
         this.httpExceptionHandler = httpExceptionHandler;
     }
 
@@ -51,13 +49,8 @@ public class ClientHandler implements Runnable {
             try {
                 request = parser.parse(in);
                 log.info("Client connected to: {}", request.getUri());
-                sessionHandler.handle(request, response);
 
-                try {
-                    router.route(request, response);
-                } catch (RouteNotFoundException e) {
-                    defaultServlet.service(request, response);
-                }
+                filterChain.doFilter(request, response);
             } catch (HttpException e) {
                 httpExceptionHandler.handle(e, response);
             } catch (Exception e) {
