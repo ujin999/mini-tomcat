@@ -28,12 +28,12 @@ public class Router {
     }
 
     // servlet으로 넘겨줘야 하기 때문에 Method method, String uri 로 넘기는 것이 불가능하다.
-    public void route(HttpRequest httpRequest, HttpResponse httpResponse) {
-        String key = httpRequest.getMethod() + ":" + httpRequest.getUri();
+    public void route(HttpRequest request, HttpResponse response) {
+        String key = request.getMethod() + ":" + request.getUri();
         HttpServlet httpServlet = routingTable.get(key);
 
         if (httpServlet != null) {
-            httpServlet.service(httpRequest, httpResponse);
+            httpServlet.service(request, response);
         } else {
             throw new RouteNotFoundException(HttpStatus.NOT_FOUND, "Page Not Found");
         }

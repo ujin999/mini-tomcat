@@ -1,5 +1,7 @@
 package com.example.minitomcat.server;
 
+import com.example.minitomcat.dispatcher.HandlerAdapter;
+import com.example.minitomcat.dispatcher.HandlerMapping;
 import com.example.minitomcat.exception.http.HttpExceptionHandler;
 import com.example.minitomcat.exception.http.HttpThreadPoolExceptionHandler;
 import com.example.minitomcat.filter.*;
@@ -30,6 +32,9 @@ public class HttpServer {
     private final List<Filter> filters;
     private final ExecutorService threadPool;
 
+    private final HandlerMapping handlerMapping;
+    private final HandlerAdapter handlerAdapter;
+
     public HttpServer(int port) {
         this.port = port;
         this.parser = new HttpParser();
@@ -43,10 +48,16 @@ public class HttpServer {
         this.threadPool = new ThreadPoolExecutor(
                 10, 200, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(100)
         );
+
+        handlerMapping = new HandlerMapping();
+        handlerAdapter = new HandlerAdapter();
     }
 
     public void initialize() {
+        handlerMapping.initialize();
+
         filters.add(new SessionFilter(httpSessionHandler));
+        filters.add(new DispatcherFilter(handlerMapping, handlerAdapter));
         filters.add(new RouterFilter(router));
         filters.add(new DefaultServletFilter(defaultServlet, httpExceptionHandler));
 

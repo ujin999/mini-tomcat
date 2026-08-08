@@ -11,9 +11,6 @@ import java.util.List;
 public class ServletContainer {
     private final Router router = new Router();
 
-    public ServletContainer() {
-    }
-
     public void initialize() {
         ClassScanner scanner = new ClassScanner();
         List<Class<?>> servletClasses = scanner.scan("com.example.minitomcat.servlet");
