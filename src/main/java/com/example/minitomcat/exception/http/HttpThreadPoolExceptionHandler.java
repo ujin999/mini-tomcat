@@ -6,9 +6,11 @@ import com.example.minitomcat.http.HttpStatus;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
 public class HttpThreadPoolExceptionHandler {
-    public void handle(Socket socket) throws IOException {
+    public void handle(SocketChannel socketChannel) throws IOException {
         HttpResponse response = new HttpResponse();
 
         response.setStatusCode(HttpStatus.SERVICE_UNAVAILABLE.getStatusCode());
@@ -19,11 +21,8 @@ public class HttpThreadPoolExceptionHandler {
         String body = HttpStatus.SERVICE_UNAVAILABLE.getResponsePhrase();
 
         response.write(body);
+        ByteBuffer buffer = ByteBuffer.wrap(response.toBytes());
 
-        OutputStream out = socket.getOutputStream();
-
-        out.write(response.toBytes());
-        out.flush();
-        out.close();
+        socketChannel.write(buffer);
     }
 }

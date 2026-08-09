@@ -14,8 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 
-import java.net.ServerSocket;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -65,12 +67,16 @@ public class HttpServer {
     }
 
     public void start() {
-        try (ServerSocket serverSocket = new ServerSocket(port)){
+        try (ServerSocketChannel serverChannel = ServerSocketChannel.open()){
+            serverChannel.bind(new InetSocketAddress(port));
             log.info("HTTP Server started on port {}", port);
+
             while (true) {
-                Socket clientSocket = null;
+                SocketChannel clientChannel = null;
                 try {
-                    clientSocket = serverSocket.accept();
+                    clientChannel = serverChannel.accept();
+
+                    Socket clientSocket = clientChannel.socket();
                     log.info("New client connected: {}", clientSocket.getRemoteSocketAddress());
 
                     threadPool.execute(new ClientHandler(clientSocket, parser, httpExceptionHandler, filters));
@@ -78,8 +84,9 @@ public class HttpServer {
                     log.warn("Failed to accept socket because thread pool is full");
 
                     try {
-                        new HttpThreadPoolExceptionHandler().handle(clientSocket);
-                        clientSocket.close();
+                        clientChannel.configureBlocking(false);
+                        new HttpThreadPoolExceptionHandler().handle(clientChannel);
+                        clientChannel.close();
                     } catch (IOException ie) {
                         log.error("Failed to process client socket connection", ie);
                     }

@@ -3,10 +3,12 @@ package com.example.minitomcat.servlet;
 import com.example.minitomcat.annotation.WebServlet;
 import com.example.minitomcat.http.HttpMethod;
 import com.example.minitomcat.routing.Router;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
+@Getter
 @Slf4j
 public class ServletContainer {
     private final Router router = new Router();
@@ -54,7 +56,4 @@ public class ServletContainer {
         router.register(method, uri, servlet);
     }
 
-    public Router getRouter() {
-        return router;
-    }
 }
