@@ -79,6 +79,8 @@ public class HttpServer {
                     Socket clientSocket = clientChannel.socket();
                     log.info("New client connected: {}", clientSocket.getRemoteSocketAddress());
 
+                    clientSocket.setSoTimeout(10_000);
+
                     threadPool.execute(new ClientHandler(clientSocket, parser, httpExceptionHandler, filters));
                 } catch (RejectedExecutionException e) {
                     log.warn("Failed to accept socket because thread pool is full");

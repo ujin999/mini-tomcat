@@ -2,12 +2,14 @@ package com.example.minitomcat.http;
 
 import com.example.minitomcat.exception.http.HttpException;
 import com.example.minitomcat.exception.http.HttpParseException;
+import com.example.minitomcat.exception.http.RequestTimeoutException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -61,6 +63,8 @@ public class HttpParser {
                     .cookies(cookies)
                     .body(body)
                     .build();
+        } catch (SocketTimeoutException e) {
+            throw new RequestTimeoutException(HttpStatus.REQUEST_TIMEOUT);
         } catch (IOException e) {
             throw new IOException("Failed to parse HTTP request due to I/O error", e);
         } catch (IllegalArgumentException | NullPointerException e) {
