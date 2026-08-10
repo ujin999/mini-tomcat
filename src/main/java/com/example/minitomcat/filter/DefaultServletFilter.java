@@ -21,6 +21,7 @@ public class DefaultServletFilter implements Filter {
         try {
             defaultServlet.service(request, response);
         } catch (IOException e) {
+            // TODO: It is recommended to throw an exception in the client handler
             httpExceptionHandler.handleUnexpected(e, response);
         }
     }
