@@ -1,0 +1,294 @@
+# Servlet Architecture
+
+## Servlet의 필요성
+
+```java
+// HttpServer
+
+while (true) {
+    HttpRequest request = parser.parse(...);
+    
+    if (request.getUri().equals("/hello")) {
+        ...
+    }
+}
+```
+위와 같이 uri가 `GET /hello` 한개만 있다면 상관 없다.
+
+```java
+GET /hello
+
+GET /users
+
+POST /users
+
+DELETE /users
+
+GET /login
+
+POST /login
+
+GET /board
+
+...
+```
+
+다음과 같이 로직이 많아지게 되면 수없이 많은 if-else 문이 생겨나게 된다.
+그래서 HttpServer는 클라이언트와 서버 애플리케이션 사이에서 HTTP 프로토콜 규격에 맞는 통신을 중재하는 역할만 하고,
+
+비즈니스 로직은 다른 객체(Servlet)이 처리하도록 하여 역할을 명확히 분리할 필요가 있는 것이다.
+
+## Servlet 설계 과제
+
+```java
+interface HttpServlet {
+    // 멤버 변수
+    HttpResponse httpResponse; (x)
+    HttpRequest httpRequest; (x)
+
+    // 메서드
+    public void init(Object config);
+
+    public HttpResponse service();
+
+    public void destroy();
+    
+    protected void doGet();
+    
+    protected void doPost();
+    
+    protected void doPut();
+}
+```
+1. servlet은 하나의 서비스가 상속받아서 사용할 것이기 때문에 interface로 생성할 것 같다.
+2. httpRequest는 생성자로 생성하여 service가 이해하게 할 것이기 때문에 하나의 멤버 변수로 두고
+3. httpResponse는 반환값으로 반환하여 생성할 것이다.
+4. 그리고 각 Http Method는 필요한 것만 오버라이딩 하여 사용할 수 있도록 하려고 한다.
+
+## Servlet 설계 과제 고칠점
+1. `GET /hello` 요청이 1000번 들어온다면 HelloServlet은 1000개 생성할 수 없다. 싱글톤으로 하나만 생성해야 한다.
+- `HttpRequest`와 `HttpResponse`를 상태로 저장하고 있다면 하나의 HelloServlet을 재활용할 수 없다.
+2. `HttpResponse service()` -> `void service(...)`
+- 빈 response를 생성하여 servlet이 채우는 것이 일반적이다.
+3. service()는 Dispatcher(배차원) 역할
+- service()의 `switch(method)`를 통해서 `doGet`, `doPost`, `doPut`을 고르는 문지기 역할을 한다.
+
+## 추천하는 최종 설계
+
+```java
+import java.net.http.HttpRequest;
+
+public interface HttpServlet {
+
+    void init(ServletConfig config);
+
+    void service(HttpRequest request,
+                 HttpResponse response);
+    
+    void destroy();
+}
+```
+
+## Servlet을 인터페이스가 아닌 추상 클래스로 만드는 이유
+1. 기본적인 코드를 구현하여 405 에러를 기본적으로 제공한다.
+- 사용자가 오버라이딩한 코드만 서비스를 할 수 있게 만든다.
+2. protected를 강제하고 싶다. `doGet` `doPost`은 Servlet 내부에서만 사용하는 메서드이다.
+- interface에서는 protected 설정을 할 수 없다.
+3. Template Method Pattern
+- HttpServlet의 `service()`는 절대 바뀌면 안되는 부분이고 `doGet()``doPost()` 부분은 변하는 부분이다.
+- interface로 만들게 되면 개발자마다 `service()`의 구현은 변하게 된다. 그러나 Tomcat 입장에서는 service()의 동작은 모두 동일해야 한다.
+
+## HttpResponse
+
+### 1. HttpResponse란
+HTTP 응답 전체를 표현하는 개체이다.
+`Status` `Headers` `Body` 등을 포함한다.
+
+### 2. HttpResponse 설계
+```java
+class HttpResponse {
+
+    String protocolVersion;
+
+    int statusCode;
+
+    String reasonPhrase;
+
+    Map<String, String> headers;
+
+    String body;
+
+}
+```
+
+## Router
+### 1. Router란?
+1. uri와 method를 확인한다.
+2. 해당 uri와 method에 맞는 servlet을 호출한다.
+
+### 2. Router 설계
+```java
+class Router {
+    Map<String, Servlet> servletMap;
+    
+    public void route(Method method, String uri) {
+    }
+    
+    public void register(Method method, String uri, Servlet servlet) {
+    }
+}
+```
+
+## Refactoring
+### 1. Error Handling
+```java
+public void start() {
+        try (ServerSocket serverSocket = new ServerSocket(port)){
+            log.info("HTTP Server started on port {}", port);
+            while (true) {
+                try (Socket socket = serverSocket.accept();
+                InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+                    HttpRequest request = parser.parse(in);
+                    log.info("Client connected:");
+
+                    HttpResponse httpResponse = new HttpResponse();
+                    router.route(request, httpResponse);
+
+                    out.write(httpResponse.toBytes());
+                    out.flush();
+                } catch (IOException e) {
+                    log.error("Failed to connect with client", e);
+                }
+            }
+        } catch (IOException e) {
+            log.error("Failed to start HTTP server on port {}", port, e);
+        } catch(HttpParseException e) {
+
+            // 400 Bad Request 응답
+            log.error("400 Bad Request: ", e);
+        }
+
+
+    }
+```
+
+두 가지 문제가 발생하게 된다.
+1. 위와 같이 작성을 하게 되면 400 Bad Request에 대한 응답을 하지 못하게 된다.
+2. 그리고 에러 발생 시 while(true) 문에서 튕겨 나가기 때문에 전체 서버가 다운되는 대참사가 일어난다.
+
+```java
+public void start() {
+        try (ServerSocket serverSocket = new ServerSocket(port)){
+            log.info("HTTP Server started on port {}", port);
+            while (true) {
+                try (Socket socket = serverSocket.accept();
+                InputStream in = socket.getInputStream();
+                OutputStream out = socket.getOutputStream()) {
+                    HttpRequest request;
+                    HttpResponse response = new HttpResponse();
+
+                    try {
+                        request = parser.parse(in);
+                        log.info("Client connected to: {}", request.getUri());
+
+                        router.route(request, response);
+                    } catch (HttpParseException e) {
+                        log.error("400 Bad Request: Invalid HTTP Format", e);
+
+                        response.setStatusCode(400);
+                        response.setReasonPhrase("Bad Request");
+                        response.getHeaders().put("Content-Type", "text/plain; charset=utf-8");
+                        response.write("400 Bad Request");
+                    }
+                    out.write(response.toBytes());
+                    out.flush();
+                } catch (IOException e) {
+                    log.error("Failed to process client socket connection", e);
+                }
+            }
+        } catch (IOException e) {
+            log.error("Fatal: Failed to start HTTP server on port {}", port, e);
+        }
+    }
+```
+
+### 2. 변수를 사용하여야 하는 경우
+```java
+    elements.put("Method", tokens[0]);
+    elements.put("Uri", tokens[1]);
+    elements.put("ProtocolVersion", tokens[2]);
+```
+이 코드는 사용자가 `elements.get("method")`같이 오류에서 컴파일 에러가 발생하지 않아 오류를 잡기 어렵다.
+
+컴파일 에러를 발생시키려면 다음과 같이 변수를 직접 사용하여 변수 사용자가 정확한 코드를 사용하게 하는 것이 중요하다.
+```java
+    String method, uri, protocolVersion;
+    if (tokens.length == 3) {
+        method = tokens[0];
+        uri = tokens[1];
+        protocolVersion = tokens[2];
+```
+
+## Servlet Container
+### 1. 현재의 문제점
+```java
+router.register(
+    "GET",
+    "/hello",
+    new HelloServlet()
+);
+```
+HttpServer가 직접 Servlet을 등록하는 과정을 겪고 있다.
+- /hello를 알아야 한다.
+- HelloServlet을 알아야 한다.
+- Router 등록 방법을 알아야 한다.
+
+HttpServer가 모든 사실을 알아야 한다. HttpServer의 책임이 점점 커지는 것이다. 
+
+따라서 다음과 같은 ServletContainer가 등장하여 HttpServer는 ServletContainer만 알면 된다.
+```java
+                   Browser
+                      │
+                      ▼
+                 HttpServer
+                      │
+                      ▼
+             ServletContainer
+                      │
+             ┌────────┴────────┐
+             ▼                 ▼
+          Router         HelloServlet
+```
+
+### 2. ServletContainer 설계
+```java
+public class ServletContainer {
+
+    private final Router router;
+
+    public ServletContainer() {
+
+    }
+
+    /*
+     * Servlet을 초기화하고 Router에 등록한다.
+     */
+    public void initialize() {
+
+    }
+
+    public Router getRouter() {
+
+    }
+
+}
+```
+
+### 3. 다음 수행 과제
+ServletContainer를 아래 목표에 맞게 구현하기.
+- Router를 생성한다.
+- HelloServlet을 생성한다.
+- HelloServlet의 init()을 호출한다. (아직 비어 있어도 괜찮습니다.)
+- Router에 등록한다.
+- getRouter()가 초기화된 Router를 반환한다.

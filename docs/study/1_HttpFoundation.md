@@ -1,4 +1,4 @@
-# 1주차
+# HTTP Foundation
 
 ## Tomcat 이해
 톰캣은 클라이언트의 HTTP 요청을 받아서 자바 코드를 실행하고, 그 결과를 다시 HTTP로 응해 주는 웹 애플리케이션 서버(WAS)
@@ -64,7 +64,7 @@
                  Browser
 ```
 
-## Step 1. 프로젝트 구조 만들기
+## 프로젝트 구조 만들기
 ```text
 mini-tomcat
 │
@@ -79,7 +79,7 @@ mini-tomcat
 └── README.md
 ```
 
-## Step 2. 설계도 그리기
+## 설계도 그리기
 ```text
 Browser
     │
@@ -157,7 +157,7 @@ url의 주소를 확인하여 실행해야 할 서블릿을 찾고 연결한다.
 ### 6. HttpResponse
 최종 응답 정보가 들어있는 객체이다.
 
-## Step 3. 클래스 목록 작성
+## 클래스 목록 작성
 
 ### 1. Main
 서버를 실행시키는 메인 클래스이다.
@@ -182,7 +182,7 @@ URI를 기반으로 적절한 Servlet을 선택한다.
 ### 6. HttpResponse
 status, headers, body를 보관하는 객체이다.
 
-## Step 4. HttpServer 구현
+## HttpServer 구현
 
 ### 1. 브라우저에서 localhost:8080을 입력하면 어떤 일이 일어날까?
 http://localhost:8080/hello 를 입력하게 되면 HTTP 요청이 바로 이루어지지 않는다.
@@ -270,24 +270,7 @@ HttpServer
     - HttpServer를 중지한다. 종료에 필요한 작업을 진행한다.
 ```
 
-### 8. HttpServer 실습
-두 코드를 작성해라.
-```java
-public class Main {
-    public static void main(String[] args) {
-
-    }
-}
-```
-```java
-public class HttpServer {
-
-    // ...
-
-}
-```
-
-## Step 5. HttpParser
+## HttpParser
 
 ### 1. HttpRequest 설계
 HttpRequest Class
@@ -412,4 +395,3 @@ Http Parser는 InputStream을 HttpRequest로 변환하는 역할을 한다.
 여기서 객체지향 설계에서 중요한 점은 역할을 잘 분리하는 것이다.
 Http Parser의 역할은 문법이 틀렸는지 확인하고 HttpRequest를 정확히 생성해내는 것이다.
 틀린 부분이 있다면 에러를 발생시켜 Server가 어떤 에러가 발생했는지 알려주는 역할을 한다.
-</br></br></br></br></br></br></br></br></br></br></br></br></br></br></br>
