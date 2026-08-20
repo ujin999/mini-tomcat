@@ -38,7 +38,18 @@ public class Container {
         states.put(clazz, ComponentStatus.CREATING);
         resolutionStack.push(clazz);
 
-        Constructor<?> constructor = clazz.getConstructors()[0];
+        Constructor<?> constructor;
+        try {
+            constructor = clazz.getConstructors()[0];
+        } catch (Exception e) {
+            states.put(clazz, ComponentStatus.FAILED);
+            resolutionStack.pop();
+            throw new ContainerException(
+                    "No public constructor: " + clazz.getName(),
+                    e
+            );
+        }
+
         constructor.setAccessible(true);
 
         Class<?>[] parameterTypes = constructor.getParameterTypes();
