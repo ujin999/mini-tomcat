@@ -1,5 +1,6 @@
 package com.example.minitomcat.server;
 
+import com.example.minitomcat.container.Container;
 import com.example.minitomcat.dispatcher.HandlerAdapter;
 import com.example.minitomcat.dispatcher.HandlerMapping;
 import com.example.minitomcat.exception.http.HttpExceptionHandler;
@@ -9,6 +10,7 @@ import com.example.minitomcat.handler.DefaultServlet;
 import com.example.minitomcat.http.HttpParser;
 import com.example.minitomcat.http.HttpSessionHandler;
 import com.example.minitomcat.routing.Router;
+import com.example.minitomcat.servlet.ClassScanner;
 import com.example.minitomcat.servlet.ServletContainer;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +26,8 @@ import java.util.concurrent.*;
 
 @Slf4j
 public class HttpServer {
+    private final ClassScanner classScanner;
+    private final Container container;
     private final ServletContainer servletContainer;
     private final Router router;
     private final HttpParser parser;
@@ -33,16 +37,17 @@ public class HttpServer {
     private final DefaultServlet defaultServlet;
     private final List<Filter> filters;
     private final ExecutorService threadPool;
-
     private final HandlerMapping handlerMapping;
     private final HandlerAdapter handlerAdapter;
 
     public HttpServer(int port) {
         this.port = port;
-        this.parser = new HttpParser();
-        this.servletContainer = new ServletContainer();
+        this.classScanner = new ClassScanner();
+        this.container = new Container(classScanner);
+        this.servletContainer = new ServletContainer(classScanner);
         servletContainer.initialize();
         this.router = servletContainer.getRouter();
+        this.parser = new HttpParser();
         this.httpExceptionHandler = new HttpExceptionHandler();
         this.httpSessionHandler = new HttpSessionHandler();
         this.defaultServlet = new DefaultServlet();
@@ -50,12 +55,13 @@ public class HttpServer {
         this.threadPool = new ThreadPoolExecutor(
                 10, 200, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(100)
         );
-
-        handlerMapping = new HandlerMapping();
+        handlerMapping = new HandlerMapping(classScanner, container);
         handlerAdapter = new HandlerAdapter();
     }
 
     public void initialize() {
+        container.populate("com.example.minitomcat");
+
         handlerMapping.initialize();
 
         filters.add(new SessionFilter(httpSessionHandler));

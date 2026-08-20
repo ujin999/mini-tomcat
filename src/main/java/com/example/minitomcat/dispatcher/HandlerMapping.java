@@ -2,6 +2,7 @@ package com.example.minitomcat.dispatcher;
 
 import com.example.minitomcat.annotation.Controller;
 import com.example.minitomcat.annotation.RequestMapping;
+import com.example.minitomcat.container.Container;
 import com.example.minitomcat.exception.RouteException;
 import com.example.minitomcat.http.HttpMethod;
 import com.example.minitomcat.http.HttpRequest;
@@ -17,34 +18,40 @@ import java.util.Map;
 public class HandlerMapping {
 
     private final Map<String, HandlerMethod> handlers = new HashMap<>();
+    private final ClassScanner scanner;
+    private final Container container;
+
+    public HandlerMapping(ClassScanner scanner, Container container) {
+        this.scanner = scanner;
+        this.container = container;
+    }
 
     public void initialize() {
-        ClassScanner scanner = new ClassScanner();
-        List<Class<?>> servletClasses = scanner.scan("com.example.minitomcat.controller");
+        List<Class<?>> servletClasses = scanner.scan(
+                "com.example.minitomcat",
+                clazz -> clazz.isAnnotationPresent(Controller.class));
 
         for (Class<?> clazz : servletClasses) {
-            if (clazz.isAnnotationPresent(Controller.class)) {
-                try {
-                    // Read Annotation
-                    Method[] methods = clazz.getDeclaredMethods();
+            try {
+                // Read Annotation
+                Method[] methods = clazz.getDeclaredMethods();
 
-                    for (Method method : methods) {
-                        if (method.isAnnotationPresent(RequestMapping.class)) {
-                            RequestMapping requestMapping = method.getAnnotation(RequestMapping.class);
+                for (Method method : methods) {
+                    if (method.isAnnotationPresent(RequestMapping.class)) {
+                        RequestMapping requestMapping = method.getAnnotation(RequestMapping.class);
 
-                            if (requestMapping != null) {
-                                HttpMethod httpMethod = requestMapping.method();
-                                String uri = requestMapping.value();
-                                Object controller = clazz.getDeclaredConstructor().newInstance();
-                                register(httpMethod, uri, controller, method);
-                            }
+                        if (requestMapping != null) {
+                            HttpMethod httpMethod = requestMapping.method();
+                            String uri = requestMapping.value();
+                            Object controller = container.getBean(clazz);
+                            register(httpMethod, uri, controller, method);
                         }
                     }
-
-                } catch (Exception e) {
-                    log.error("Fail to create servlet instance", e);
-                    throw new RuntimeException("Fatal error: Server failure", e);
                 }
+
+            } catch (Exception e) {
+                log.error("Fail to create servlet instance", e);
+                throw new RuntimeException("Fatal error: Server failure", e);
             }
         }
     }
