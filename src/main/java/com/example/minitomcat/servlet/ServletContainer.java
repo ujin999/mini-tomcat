@@ -12,38 +12,41 @@ import java.util.List;
 @Slf4j
 public class ServletContainer {
     private final Router router = new Router();
+    private final ClassScanner scanner;
+
+    public ServletContainer(ClassScanner scanner) {
+        this.scanner = scanner;
+    }
 
     public void initialize() {
-        ClassScanner scanner = new ClassScanner();
-        List<Class<?>> servletClasses = scanner.scan("com.example.minitomcat.servlet");
+        List<Class<?>> servletClasses = scanner.scan(
+                "com.example.minitomcat",
+                clazz -> clazz.isAnnotationPresent(WebServlet.class));
 
         for (Class<?> clazz : servletClasses) {
-            if (clazz.isAnnotationPresent(WebServlet.class)) {
+            try {
+                // Read Annotation
+                WebServlet annotation = clazz.getAnnotation(WebServlet.class);
+                String uri = annotation.value();
+                HttpMethod method = annotation.method();
 
-                try {
-                    // Read Annotation
-                    WebServlet annotation = clazz.getAnnotation(WebServlet.class);
-                    String uri = annotation.value();
-                    HttpMethod method = annotation.method();
-
-                    // Create Reflection
-                    if (!HttpServlet.class.isAssignableFrom(clazz)) {
-                        continue;
-                    }
-
-                    Object instance = clazz.getDeclaredConstructor().newInstance();
-                    HttpServlet servlet = (HttpServlet) instance;
-
-                    // init()
-                    servlet.init();
-
-                    // register()
-                    register(method, uri, servlet);
-
-                } catch (Exception e) {
-                    log.error("Fail to create servlet instance", e);
-                    throw new RuntimeException("Fatal error: Server failure", e);
+                // Create Reflection
+                if (!HttpServlet.class.isAssignableFrom(clazz)) {
+                    continue;
                 }
+
+                Object instance = clazz.getDeclaredConstructor().newInstance();
+                HttpServlet servlet = (HttpServlet) instance;
+
+                // init()
+                servlet.init();
+
+                // register()
+                register(method, uri, servlet);
+
+            } catch (Exception e) {
+                log.error("Fail to create servlet instance", e);
+                throw new RuntimeException("Fatal error: Server failure", e);
             }
         }
     }

@@ -7,19 +7,34 @@ import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.net.JarURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
+import java.util.*;
+import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
+/**
+ * A class scanner that explores and collects class files within the application.
+ * <p>
+ * <b>CRITICAL:</b> This scanner <b>must be shared as a single instance</b> across the HTTP server.
+ * To prevent redundant scanning and resource waste, all HTTP server components
+ * must access and utilize this single shared instance.
+ * </p>
+ *
+ * @author ujin999
+ * @since 1.0.0
+ */
 @Slf4j
 public class ClassScanner {
+    Map<String, List<Class<?>>> classesByPackage = new HashMap<>();
 
-    public List<Class<?>> scan(String basePackage) {
+    public List<Class<?>> scan(String basePackage, Predicate<Class<?>> filter) {
+        if (classesByPackage.containsKey(basePackage)) {
+            return classesByPackage.get(basePackage).stream()
+                    .filter(filter)
+                    .toList();
+        }
 
         // basePackage ex. com.example.minitomcat.servlet
-
         List<Class<?>> classes = new ArrayList<>();
 
         // package -> path
@@ -57,7 +72,9 @@ public class ClassScanner {
             throw new RuntimeException(e);
         }
 
-        return classes;
+        classesByPackage.put(basePackage, classes);
+
+        return classes.stream().filter(filter).toList();
     }
 
     private void findClassesInDirectory(File directory, String basePackage, List<Class<?>> classes) throws ClassNotFoundException {
